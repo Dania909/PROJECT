@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+/* extras */
+:root { --cell: 110px; }
+
+.reel-spin { animation: reel-move 650ms ease-out; }
+@keyframes reel-move {
+  0% { transform: translateY(-120%); }
+  100% { transform: translateY(0%); }
+}
