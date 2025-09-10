@@ -1,0 +1,168 @@
+import wildImage from "./assets/wild.jpg";
+import freeSpinsImage from "./assets/freespins.jpg";
+
+// ✅ Symbols
+export const SYMBOLS = [
+  { key: "ELEPHANT", emoji: "🐘" },
+  { key: "LION", emoji: "🦁" },
+  { key: "GIRAFFE", emoji: "🦒" },
+  { key: "RHINO", emoji: "🦜" },
+  { key: "A", emoji: "A" },
+  { key: "K", emoji: "K" },
+  { key: "Q", emoji: "Q" },
+  { key: "J", emoji: "J" },
+  { key: "10", emoji: "10" },
+  { key: "IMAGE1", img: wildImage }, // Wild
+  { key: "IMAGE2", img: freeSpinsImage }, // Free Spins (Scatter)
+];
+
+// ✅ Constants
+export const REELS = 5;
+export const ROWS = 4;
+export const CELL_SIZE = 150;
+export const LINES = 25;
+export const STEPS = [0.01, 0.02, 0.05, 0.1, 0.3, 0.5, 1, 2, 5, 10];
+
+// ✅ Paytable
+export const PAYTABLE = {
+  ELEPHANT: { 3: 30, 4: 120, 5: 600 },
+  LION: { 3: 40, 4: 200, 5: 1000 },
+  GIRAFFE: { 3: 20, 4: 40, 5: 200 },
+  RHINO: { 3: 15, 4: 30, 5: 100 },
+  A: { 3: 10, 4: 15, 5: 50 },
+  K: { 3: 5, 4: 10, 5: 40 },
+  Q: { 3: 5, 4: 10, 5: 40 },
+  J: { 3: 5, 4: 10, 5: 30 },
+  10: { 3: 5, 4: 10, 5: 30 },
+  IMAGE1: { 5: 2000 }, // Wild: فقط 5 بنفس السطر
+};
+
+// ✅ Paylines (25 خط)
+export const PAYLINES = [
+  [0, 0, 0, 0, 0],
+  [1, 1, 1, 1, 1],
+  [2, 2, 2, 2, 2],
+  [3, 3, 3, 3, 3],
+  [0, 1, 2, 1, 0],
+  [3, 2, 1, 2, 3],
+  [0, 0, 1, 0, 0],
+  [3, 3, 2, 3, 3],
+  [1, 0, 0, 0, 1],
+  [2, 3, 3, 3, 2],
+  [0, 1, 1, 1, 0],
+  [3, 2, 2, 2, 3],
+  [1, 2, 3, 2, 1],
+  [2, 1, 0, 1, 2],
+  [0, 1, 0, 1, 0],
+  [3, 2, 3, 2, 3],
+  [1, 1, 0, 1, 1],
+  [2, 2, 3, 2, 2],
+  [0, 0, 3, 0, 0],
+  [3, 3, 0, 3, 3],
+  [1, 2, 1, 2, 1],
+  [2, 1, 2, 1, 2],
+  [0, 2, 0, 2, 0],
+  [3, 1, 3, 1, 3],
+  [0, 3, 0, 3, 0],
+];
+
+// ✅ Random symbol (مع خيار استبعاد الـ Wild)
+export const randSym = (excludeWild = false) => {
+  const pool = excludeWild
+    ? SYMBOLS.filter((s) => s.key !== "IMAGE1")
+    : SYMBOLS;
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
+// ✅ Generate Free Spin Result
+// ✅ Generate Free Spin Result
+export function generateFreeSpinResult() {
+  // 1️⃣ نولد الرموز العادية بدون Wild
+  const baseResult = Array.from(
+    { length: ROWS },
+    () => Array.from({ length: REELS }, () => randSym(true)) // exclude wild
+  );
+
+  // 2️⃣ الأعمدة المسموح فيها Wild (1, 3, 5 → index 0, 2, 4)
+  const eligibleReels = [0, 2, 4];
+
+  // 3️⃣ نحدد عدد الأعمدة التي ستصبح Wild (باستخدام نسب الاحتمالات الجديدة)
+  const rand = Math.random();
+  let wildReelsCount = 1;
+
+  if (rand < 0.6) {
+    wildReelsCount = 1; // 60%
+  } else if (rand < 0.9) {
+    wildReelsCount = 2; // 30%
+  } else {
+    wildReelsCount = 3; // 10%
+  }
+
+  // 4️⃣ نختار الأعمدة العشوائية
+  const shuffled = [...eligibleReels].sort(() => Math.random() - 0.5);
+  const chosenColumns = shuffled.slice(0, wildReelsCount);
+
+  // 5️⃣ نملأ الأعمدة المختارة بالـ Wild
+  chosenColumns.forEach((col) => {
+    for (let row = 0; row < ROWS; row++) {
+      baseResult[row][col] = { key: "IMAGE1", img: wildImage };
+    }
+  });
+
+  return baseResult;
+}
+
+// ✅ Check Free Spins Trigger
+export function checkFreeSpins(result) {
+  let count = 0;
+  result.flat().forEach((sym) => {
+    if (sym.key === "IMAGE2") count++;
+  });
+  return count >= 3 ? 10 : 0;
+}
+
+// ✅ Calculate Win
+export function calcWin(result, betPerLine) {
+  let win = 0;
+
+  PAYLINES.forEach((line) => {
+    const symbolsInLine = line.map((rowIndex, col) => result[rowIndex][col]);
+
+    // كلهم Wilds
+    if (symbolsInLine.every((s) => s.key === "IMAGE1")) {
+      win += PAYTABLE.IMAGE1[5] * betPerLine;
+      return;
+    }
+
+    let base = null;
+    let count = 0;
+    let wildBuffer = 0;
+
+    for (let col = 0; col < REELS; col++) {
+      const sym = symbolsInLine[col];
+
+      if (!base) {
+        if (sym.key === "IMAGE1") {
+          wildBuffer++;
+        } else if (sym.key !== "IMAGE2") {
+          base = sym.key;
+          count = 1 + wildBuffer;
+          wildBuffer = 0;
+        } else break;
+      } else {
+        if (sym.key === base || sym.key === "IMAGE1") {
+          count++;
+        } else break;
+      }
+    }
+
+    if (base && count >= 3) {
+      const payouts = PAYTABLE[base];
+      if (payouts && payouts[count]) {
+        win += payouts[count] * betPerLine;
+      }
+    }
+  });
+
+  return +win.toFixed(2);
+}

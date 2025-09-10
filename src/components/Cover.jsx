@@ -1,37 +1,41 @@
-import React from "react";
-import coverImg from "../assets/cover.jpg";   // background image (the main cover)
-
+import coverImg from "../assets/cover.jpg";
 
 export default function Cover({ onStart }) {
   return (
-    <div className="min-h-screen relative flex items-center justify-center bg-[#08130f] overflow-hidden">
-
- 
+    <div className="min-h-screen relative bg-[#08130f] overflow-hidden">
       <div
         className="absolute inset-0 bg-center bg-no-repeat bg-contain"
         style={{ backgroundImage: `url(${coverImg})` }}
       />
-
-      {/* Semi-transparent dark overlay to make text more readable */}
       <div className="absolute inset-0 bg-black/28" />
 
-      {/* Foreground content (title, win text, banner, start button) */}
-      <div className="relative z-10 w-full max-w-[980px] mx-auto px-4 text-center">
-
- 
-
-
-
-        {/* START button (green) */}
+      <div className="absolute left-1/2 -translate-x-1/2 bottom-[5%]">
         <button
-          onClick={onStart}  // when clicked → calls onStart (switches to game screen)
-          className="mt-5 inline-block px-10 py-3 rounded-xl font-extrabold text-lg
-                     bg-green-500 text-black hover:bg-green-400
-                     shadow-[0_0_20px_rgba(0,0,0,.7)] transition"
+          onClick={onStart}
+          className="
+            relative inline-flex items-center justify-center overflow-hidden
+            px-10 py-3 rounded-[14px] transform-gpu
+            bg-gradient-to-b from-[#71ff79] to-[#27d53c]
+            border-4 border-[#d8a64a] tracking-wide text-2xl font-extrabold
+            shadow-[0_6px_0_#7a5b24,0_0_22px_rgba(0,0,0,.55)]
+            hover:brightness-110 active:translate-y-[1px]
+            animate-start-dance
+          "
         >
-          START
-        </button>
+          {/* GOLD text */}
+          <span className="relative z-[1] bg-gradient-to-b from-yellow-200 to-yellow-500 bg-clip-text text-transparent">
+            START
+          </span>
 
+          {/* moving shine bar */}
+          <span
+            className="
+              pointer-events-none absolute inset-y-0 -left-[120%] w-[40%] skew-x-[-25deg]
+              bg-gradient-to-r from-transparent via-white/35 to-transparent
+              blur-[1px] animate-start-shine
+            "
+          />
+        </button>
       </div>
     </div>
   );

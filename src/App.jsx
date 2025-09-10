@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import Cover from "./components/Cover"; // import the Cover component
+import Cover from "./components/Cover";
+import GamePage from "./components/GamePage";
 
 export default function App() {
   const [started, setStarted] = useState(false);
@@ -9,9 +10,7 @@ export default function App() {
       {!started ? (
         <Cover onStart={() => setStarted(true)} />
       ) : (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
-          <h1 className="text-3xl font-bold">Game Screen Placeholder</h1>
-        </div>
+        <GamePage />
       )}
     </div>
   );
