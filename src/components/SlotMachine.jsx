@@ -8,18 +8,17 @@ import {
   generateFreeSpinResult,
   checkFreeSpins,
   calcWin,
+  SYMBOLS,
   REELS,
   ROWS,
   CELL_SIZE,
   LINES,
+  PAYLINES,
+  PAYTABLE,
   STEPS,
-  injectWilds,
 } from "../utils";
 
-export default function SlotMachine({
-  addFreeSpinsSignal,
-  addFreeSpinsAmount,
-}) {
+export default function SlotMachine() {
   const [spinning, setSpinning] = useState(false);
   const [balance, setBalance] = useState(5000);
   const [betPerLine, setBetPerLine] = useState(0.01);
@@ -43,18 +42,16 @@ export default function SlotMachine({
 
   const startSpin = useCallback(() => {
     if (spinning || (!inFreeSpins && balance < betPerLine * LINES)) return;
-
     setSpinning(true);
     if (!inFreeSpins) setBalance((prev) => prev - betPerLine * LINES);
+
     setReelsStopped(Array(REELS).fill(false));
 
-    const baseMatrix = inFreeSpins
+    const nextResult = inFreeSpins
       ? generateFreeSpinResult()
       : Array.from({ length: ROWS }, () =>
-          Array.from({ length: REELS }, () => randSym(true))
+          Array.from({ length: REELS }, () => randSym())
         );
-
-    const nextResult = inFreeSpins ? baseMatrix : injectWilds(baseMatrix);
 
     for (let i = 0; i < REELS; i++) {
       setTimeout(() => {
@@ -63,18 +60,15 @@ export default function SlotMachine({
           updated[i] = true;
           return updated;
         });
-
         setResult((prev) =>
           prev.map((row, r) =>
             row.map((cell, c) => (c === i ? nextResult[r][c] : cell))
           )
         );
-
         if (i === REELS - 1) {
           const win = calcWin(nextResult, betPerLine);
           setLastWin(win);
           if (win > 0) setBalance((prev) => prev + win);
-
           if (!inFreeSpins) {
             const spinsAwarded = checkFreeSpins(nextResult);
             if (spinsAwarded > 0) {
@@ -88,7 +82,6 @@ export default function SlotMachine({
     }
   }, [spinning, balance, betPerLine, inFreeSpins]);
 
-  // Auto-play free spins
   useEffect(() => {
     if (inFreeSpins && freeSpins > 0 && !spinning) {
       const timer = setTimeout(() => {
@@ -100,7 +93,6 @@ export default function SlotMachine({
     if (inFreeSpins && freeSpins === 0 && !spinning) setInFreeSpins(false);
   }, [inFreeSpins, freeSpins, spinning, startSpin]);
 
-  // Keyboard shortcut
   useEffect(() => {
     const onKey = (e) => {
       if (e.code === "Space") {
@@ -112,7 +104,6 @@ export default function SlotMachine({
     return () => window.removeEventListener("keydown", onKey);
   }, [startSpin]);
 
-  // Bet adjusters
   const increaseBet = () => {
     const currentIndex = STEPS.indexOf(betPerLine);
     if (currentIndex < STEPS.length - 1) setBetPerLine(STEPS[currentIndex + 1]);
@@ -122,27 +113,21 @@ export default function SlotMachine({
     if (currentIndex > 0) setBetPerLine(STEPS[currentIndex - 1]);
   };
 
-  // External free spins from parent
-  useEffect(() => {
-    if (typeof addFreeSpinsAmount === "number" && addFreeSpinsAmount > 0) {
-      setFreeSpins((prev) => prev + addFreeSpinsAmount);
-      setInFreeSpins(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addFreeSpinsSignal]);
-
   return (
     <div
-      className="min-h-screen w-full flex items-center justify-center bg-cover bg-center"
+      className="min-h-screen w-full flex items-center justify-center p-16 bg-cover bg-center"
       style={{ backgroundImage: `url(${background})` }}
     >
       <div className="w-[1500px] max-w-[90%] flex flex-col items-center text-center p-10">
-        <div className="mb-6 text-sm opacity-80">
-          Press <kbd className="px-2 py-1 rounded bg-white/10">Space</kbd> to spin
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <div className="text-sm opacity-80">
+            Press <kbd className="px-2 py-1 rounded bg-white/10">Space</kbd> to
+            spin
+          </div>
         </div>
 
         <div
-          className="relative rounded-3xl shadow-2xl p-6 flex flex-col items-center"
+          className="relative rounded-3xl shadow-2xl p-6 flex flex-col items-center  "
           style={{
             backgroundImage: `url(${board})`,
             backgroundSize: "cover",
@@ -155,19 +140,17 @@ export default function SlotMachine({
             Balance: {balance.toFixed(2)}
           </div>
 
-          {/* Slot grid */}
           <div
             className="relative mx-auto grid"
             style={{
-              gridTemplateColumns: `repeat(${REELS}, ${CELL_SIZE}px)`, // <-- FIXED
-              gridTemplateRows: `repeat(${ROWS}, ${CELL_SIZE}px)`,     // <-- FIXED
+              gridTemplateColumns: `repeat(${REELS}, ${CELL_SIZE}px)`,
+              gridTemplateRows: `repeat(${ROWS}, ${CELL_SIZE}px)`,
               gap: 10,
               width: REELS * CELL_SIZE + (REELS - 1) * 10,
               height: ROWS * CELL_SIZE + (ROWS - 1) * 10,
             }}
           >
             <div className="absolute inset-0 rounded-xl pointer-events-none border-2 border-yellow-400/30 shadow-inner"></div>
-
             {Array.from({ length: REELS }, (_, reelIndex) => (
               <Reel
                 key={reelIndex}
@@ -180,31 +163,25 @@ export default function SlotMachine({
             ))}
           </div>
 
-          {/* Stats + Controls */}
           <div className="mt-6 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-6 text-sm flex-wrap">
+            <div className="flex items-center justify-center gap-6 text-sm flex-wrap">
               <Stat label="LINES" value={LINES} />
               <div className="flex items-center gap-2">
                 <button
                   onClick={decreaseBet}
-                  className="w-8 h-8 rounded-full bg-red-500 text-black font-bold disabled:opacity-50"
-                  disabled={inFreeSpins}
+                  className="w-8 h-8 rounded-full bg-red-500 hover:bg-red-400 text-black font-bold"
                 >
                   −
                 </button>
                 <Stat label="BET / LINE" value={betPerLine.toFixed(2)} />
                 <button
                   onClick={increaseBet}
-                  className="w-8 h-8 rounded-full bg-green-500 text-black font-bold disabled:opacity-50"
-                  disabled={inFreeSpins}
+                  className="w-8 h-8 rounded-full bg-green-500 hover:bg-green-400 text-black font-bold"
                 >
                   +
                 </button>
               </div>
-              <Stat
-                label="TOTAL BET"
-                value={(betPerLine * LINES).toFixed(2)}
-              />
+              <Stat label="TOTAL BET" value={(betPerLine * LINES).toFixed(2)} />
               <Stat
                 label="WIN"
                 value={spinning ? "—" : lastWin.toString()}
@@ -219,8 +196,12 @@ export default function SlotMachine({
 
             <button
               onClick={startSpin}
-              disabled={spinning || (!inFreeSpins && balance < betPerLine * LINES)}
-              className="px-8 py-3 rounded-2xl font-extrabold tracking-wide text-lg disabled:opacity-50 bg-yellow-400 text-black hover:bg-yellow-300 transition"
+              disabled={
+                spinning || (!inFreeSpins && balance < betPerLine * LINES)
+              }
+              className={
+                "px-8 py-3 rounded-2xl font-extrabold tracking-wide text-lg disabled:opacity-50 bg-yellow-400 text-black hover:bg-yellow-300 transition"
+              }
             >
               {spinning
                 ? "SPINNING…"
@@ -234,12 +215,7 @@ export default function SlotMachine({
         </div>
       </div>
 
-      <style>{`
-        @keyframes reel-spin {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(-100%); }
-        }
-      `}</style>
+      <style>{`@keyframes reel-spin { 0% { transform: translateY(0); } 100% { transform: translateY(-100%); } }`}</style>
     </div>
   );
 }

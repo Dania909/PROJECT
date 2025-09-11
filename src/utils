@@ -1,3 +1,5 @@
+
+// @ts-nocheck
 import wildImage from "./assets/wild.jpg";
 import freeSpinsImage from "./assets/freespins.jpg";
 import Elephant from "./assets/eleph.jpg";
@@ -10,35 +12,26 @@ import letterq from "./assets/letterq.png";
 import number from "./assets/number10.png";
 import letterj from "./assets/let.png";
 
-// ✅ Symbols (merged: images + emojis + wild types)
 export const SYMBOLS = [
-  { key: "ELEPHANT", img: Elephant, emoji: "🐘" },
-  { key: "LION", img: Lion, emoji: "🦁" },
-  { key: "GIRAFFE", img: giraffe, emoji: "🦒" },
-  { key: "RHINO", img: animal, emoji: "🦏" },
-  { key: "A", img: lettera, emoji: "A" },
-  { key: "K", img: letterk, emoji: "K" },
-  { key: "Q", img: letterq, emoji: "Q" },
-  { key: "J", img: letterj, emoji: "J" },
-  { key: "10", img: number, emoji: "10" },
-
-  // Wilds
-  { key: "IMAGE1", img: wildImage },      // full overlay
-  { key: "WILD_FACE", img: wildImage },   // face part
-  { key: "WILD_BODY", img: wildImage },   // body part
-
-  // Scatter
+  { key: "ELEPHANT", img: Elephant },
+  { key: "LION", img: Lion },
+  { key: "GIRAFFE", img: giraffe },
+  { key: "RHINO", img: animal },
+  { key: "A", img: lettera },
+  { key: "K", img: letterk },
+  { key: "Q", img: letterq },
+  { key: "J", img: letterj },
+  { key: "10", img: number },
+  { key: "IMAGE1", img: wildImage },
   { key: "IMAGE2", img: freeSpinsImage },
 ];
 
-// ✅ Constants
 export const REELS = 5;
 export const ROWS = 4;
-export const CELL_SIZE = 150; // keep large cell size from first file
+export const CELL_SIZE = 150;
 export const LINES = 25;
 export const STEPS = [0.01, 0.02, 0.05, 0.1, 0.3, 0.5, 1, 2, 5, 10];
 
-// ✅ Paytable
 export const PAYTABLE = {
   ELEPHANT: { 3: 30, 4: 120, 5: 600 },
   LION: { 3: 40, 4: 200, 5: 1000 },
@@ -49,10 +42,9 @@ export const PAYTABLE = {
   Q: { 3: 5, 4: 10, 5: 40 },
   J: { 3: 5, 4: 10, 5: 30 },
   10: { 3: 5, 4: 10, 5: 30 },
-  IMAGE1: { 5: 2000 }, // 5 wilds line
+  IMAGE1: { 5: 2000 },
 };
 
-// ✅ Paylines
 export const PAYLINES = [
   [0, 0, 0, 0, 0],
   [1, 1, 1, 1, 1],
@@ -81,72 +73,30 @@ export const PAYLINES = [
   [0, 3, 0, 3, 0],
 ];
 
-// --- Helpers
-export const isWild = (s) =>
-  s && (s.key === "IMAGE1" || s.key === "WILD_FACE" || s.key === "WILD_BODY");
-
 export const randSym = (excludeWild = false) => {
   const pool = excludeWild
-    ? SYMBOLS.filter((s) => !isWild(s))
+    ? SYMBOLS.filter((s) => s.key !== "IMAGE1")
     : SYMBOLS;
   return pool[Math.floor(Math.random() * pool.length)];
 };
 
-// --- Wild column distribution (normal spin)
-function sampleWildColumns() {
-  const x = Math.random();
-  if (x < 0.30) return 1;     // 30% → 1 column
-  if (x < 0.40) return 2;     // 10% → 2 columns
-  return 0;                   // 60% → no wild column
-}
-
-function sampleWildSize() {
-  const sizes = [1, 2, 4];
-  return sizes[Math.floor(Math.random() * sizes.length)];
-}
-
-// ✅ Inject wild columns for normal spins
-export function injectWilds(baseResult) {
-  const result = baseResult.map((row) => row.map((c) => ({ ...c })));
-
-  const wildColCount = sampleWildColumns();
-  const shuffledCols = Array.from({ length: REELS }, (_, i) => i).sort(
-    () => Math.random() - 0.5
-  );
-  const chosenCols = shuffledCols.slice(0, wildColCount);
-
-  chosenCols.forEach((col) => {
-    const size = sampleWildSize();
-
-    if (size === 4) {
-      for (let r = 0; r < ROWS; r++) {
-        result[r][col] = { key: "IMAGE1", img: wildImage };
-      }
-      return;
-    }
-
-    // stacked wild parts
-    for (let r = 0; r < size; r++) {
-      result[r][col] =
-        r === 0
-          ? { key: "WILD_FACE", img: wildImage }
-          : { key: "WILD_BODY", img: wildImage };
-    }
-  });
-
-  return result;
-}
-
-// ✅ Free Spins
 export function generateFreeSpinResult() {
-  const baseResult = Array.from(
-    { length: ROWS },
-    () => Array.from({ length: REELS }, () => randSym(true))
+  const baseResult = Array.from({ length: ROWS }, () =>
+    Array.from({ length: REELS }, () => randSym(true))
   );
 
   const eligibleReels = [0, 2, 4];
+
   const rand = Math.random();
-  const wildReelsCount = rand < 0.6 ? 1 : rand < 0.9 ? 2 : 3;
+  let wildReelsCount = 1;
+
+  if (rand < 0.6) {
+    wildReelsCount = 1;
+  } else if (rand < 0.9) {
+    wildReelsCount = 2;
+  } else {
+    wildReelsCount = 3;
+  }
 
   const shuffled = [...eligibleReels].sort(() => Math.random() - 0.5);
   const chosenColumns = shuffled.slice(0, wildReelsCount);
@@ -160,19 +110,21 @@ export function generateFreeSpinResult() {
   return baseResult;
 }
 
-// ✅ Free Spins trigger
 export function checkFreeSpins(result) {
-  return result.flat().filter((s) => s.key === "IMAGE2").length >= 3 ? 10 : 0;
+  let count = 0;
+  result.flat().forEach((sym) => {
+    if (sym.key === "IMAGE2") count++;
+  });
+  return count >= 3 ? 10 : 0;
 }
 
-// ✅ Calc win
 export function calcWin(result, betPerLine) {
   let win = 0;
 
   PAYLINES.forEach((line) => {
     const symbolsInLine = line.map((rowIndex, col) => result[rowIndex][col]);
 
-    if (symbolsInLine.every((s) => isWild(s))) {
+    if (symbolsInLine.every((s) => s.key === "IMAGE1")) {
       win += PAYTABLE.IMAGE1[5] * betPerLine;
       return;
     }
@@ -183,8 +135,9 @@ export function calcWin(result, betPerLine) {
 
     for (let col = 0; col < REELS; col++) {
       const sym = symbolsInLine[col];
+
       if (!base) {
-        if (isWild(sym)) {
+        if (sym.key === "IMAGE1") {
           wildBuffer++;
         } else if (sym.key !== "IMAGE2") {
           base = sym.key;
@@ -192,14 +145,17 @@ export function calcWin(result, betPerLine) {
           wildBuffer = 0;
         } else break;
       } else {
-        if (sym.key === base || isWild(sym)) count++;
-        else break;
+        if (sym.key === base || sym.key === "IMAGE1") {
+          count++;
+        } else break;
       }
     }
 
     if (base && count >= 3) {
       const payouts = PAYTABLE[base];
-      if (payouts && payouts[count]) win += payouts[count] * betPerLine;
+      if (payouts && payouts[count]) {
+        win += payouts[count] * betPerLine;
+      }
     }
   });
 

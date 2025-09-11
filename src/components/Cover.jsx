@@ -1,5 +1,6 @@
 import coverImg from "../assets/cover.jpg";
 
+
 export default function Cover({ onStart }) {
   return (
     <div className="min-h-screen relative bg-[#08130f] overflow-hidden">
