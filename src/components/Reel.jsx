@@ -2,10 +2,23 @@ import React from "react";
 import { Strip } from "./Strip";
 import { Cell } from "./Cell";
 
-export function Reel({ spinning, visibleRows, cellSize, strip, resultColumn }) {
-  const hasImage1 = resultColumn.some((sym) => sym.key === "IMAGE1");
-  const image1 = resultColumn.find((s) => s.key === "IMAGE1");
+/**
+ * Reel
+ * - When `spinning` is true: shows a looping Strip with a soft gradient mask.
+ * - When the column contains a symbol with key === "IMAGE1": shows a full-reel overlay using that image.
+ * - Otherwise: renders the symbols in a grid of visible rows.
+ */
+export function Reel({
+  spinning = false,
+  visibleRows = 3,
+  cellSize = 120,
+  strip = [],
+  resultColumn = [],
+}) {
   const reelHeight = visibleRows * cellSize;
+
+  const image1 = resultColumn.find((s) => s?.key === "IMAGE1");
+  const hasImage1 = Boolean(image1);
 
   return (
     <div
@@ -13,6 +26,7 @@ export function Reel({ spinning, visibleRows, cellSize, strip, resultColumn }) {
       style={{ width: cellSize, height: reelHeight }}
     >
       {spinning ? (
+        // 🔹 Spinning animation with gradient mask
         <div
           className="absolute inset-0"
           style={{
@@ -27,30 +41,33 @@ export function Reel({ spinning, visibleRows, cellSize, strip, resultColumn }) {
             <Strip strip={strip} cellSize={cellSize} />
           </div>
         </div>
-      ) : hasImage1 && image1 ? (
+      ) : hasImage1 ? (
+        // 🔹 Full wild overlay (IMAGE1 covers whole reel)
         <div
           className="absolute top-0"
           style={{
-            width: cellSize + 35,
-            height: visibleRows * cellSize,
+            width: cellSize + 39, // keep your offset from previous file
+            height: reelHeight,
             zIndex: 10,
           }}
         >
           <img
             src={image1.img}
             alt="IMAGE1"
+            className="rounded-xl"
             style={{
               width: "100%",
               height: "100%",
               objectFit: "cover",
               objectPosition: "center",
             }}
-            className="rounded-xl"
           />
         </div>
       ) : (
+        // 🔹 Normal symbols layout
         <div
           className="absolute inset-0 grid"
+          // ✅ FIX: gridTemplateRows must be a string
           style={{ gridTemplateRows: `repeat(${visibleRows}, ${cellSize}px)` }}
         >
           {resultColumn.map((sym, i) => (
@@ -58,6 +75,14 @@ export function Reel({ spinning, visibleRows, cellSize, strip, resultColumn }) {
           ))}
         </div>
       )}
+
+      {/* Local keyframes in case Tailwind doesn't have 'reel-spin' */}
+      <style>{`
+        @keyframes reel-spin {
+          0%   { transform: translateY(0); }
+          100% { transform: translateY(-50%); }
+        }
+      `}</style>
     </div>
   );
 }

@@ -13,8 +13,12 @@ export default function GamePage() {
   const [showCongrats, setShowCongrats] = useState(false);
   const [showGamble, setShowGamble] = useState(false);
 
-  // you can store how many free spins were bought
+  // default free spins awarded by the "BUY FEATURE" (for the Congrats & Gamble UIs)
   const [freeSpins, setFreeSpins] = useState(10);
+
+  // signal to SlotMachine that it should add N free spins now
+  const [fsSignal, setFsSignal] = useState(0);
+  const [fsAmount, setFsAmount] = useState(0);
 
   const openBuy = () => setShowBuy(true);
 
@@ -31,10 +35,12 @@ export default function GamePage() {
     setShowGamble(true);       // → then show the gamble screen
   };
 
-  const handleGambleCollect = () => {
+  // NEW: when player collects, close the modal and push those spins to the SlotMachine
+  const handleGambleCollect = (collectedSpins) => {
     setShowGamble(false);
-    // Next step would be: go to game and auto-play free spins.
-    // For now we just close the flow.
+    setFsAmount(collectedSpins);
+    setFsSignal((s) => s + 1); // bump signal so SlotMachine's effect runs
+    // After this, SlotMachine will add spins and auto-play until they finish.
   };
 
   return (
@@ -45,7 +51,11 @@ export default function GamePage() {
       </div>
 
       <div className="flex-1 grid place-items-center">
-        <SlotMachine />
+        <SlotMachine
+          // NEW props to inject external free spins and auto-play them
+          addFreeSpinsSignal={fsSignal}
+          addFreeSpinsAmount={fsAmount}
+        />
       </div>
 
       <div className="h-16 flex items-center justify-center gap-4 bg-slate-950/60 border-t border-white/10">
@@ -78,9 +88,8 @@ export default function GamePage() {
       {/* GAMBLE */}
       <GambleModal
         open={showGamble}
-        spins={freeSpins}
+        initialSpins={freeSpins}   // FIX: pass as initialSpins (not "spins")
         onCollect={handleGambleCollect}
-        // onGamble={() => ... } // wire this later
       />
     </div>
   );
