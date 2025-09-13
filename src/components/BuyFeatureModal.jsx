@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import PanelImg from "../assets/Background.png";        // purple panel
 import BorderImg from "../assets/Border.png";           // gold glowing border
@@ -35,7 +35,7 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
   const LEFT_TORCH_LEFT = 146;
   const RIGHT_TORCH_RIGHT = 110;
 
-  // 🔥 FLAMES: bigger + vertical (up/down) animation only
+  // FLAMES: bigger + vertical (up/down) animation only
   const FLAME_W = 220;                  // bigger
   const FLAME_BOTTOM = TORCH_W * 1.95;  // keep centered above bowl with new size
 
@@ -43,14 +43,30 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
   const BTN_W = 168;
   const BTN_GAP = 55;
 
-  // Title placement
-  const TITLE_TOP_PX = 12;
+  // Title placement (moved a little down)
+  const TITLE_TOP_PX = 18; // ⬅️ was 12
 
   const idx = Math.max(0, BET_OPTIONS.indexOf(bet));
   const canDec = idx > 0;
   const canInc = idx < BET_OPTIONS.length - 1;
   const dec = () => canDec && setBet(BET_OPTIONS[idx - 1]);
   const inc = () => canInc && setBet(BET_OPTIONS[idx + 1]);
+
+  // ========= Pulsed (not continuous) animation for Cancel/Buy =========
+  const [animateAction, setAnimateAction] = useState(false);
+  useEffect(() => {
+    const PULSE_MS = 1200;     // how long one pulse runs
+    const INTERVAL_MS = 3500;  // how often to trigger (3–4s feel)
+    const tick = () => {
+      setAnimateAction(true);
+      setTimeout(() => setAnimateAction(false), PULSE_MS);
+    };
+    // fire once after a short delay so first pulse isn't immediate
+    const kickoff = setTimeout(tick, 800);
+    const interval = setInterval(tick, INTERVAL_MS);
+    return () => { clearTimeout(kickoff); clearInterval(interval); };
+  }, []);
+  // ====================================================================
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
@@ -140,7 +156,7 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
         <div className="absolute inset-0 grid place-items-center" style={{ zIndex: CONTENT_Z }}>
           {/* Wrapper relative so title can float */}
           <div className="relative w-full text-center px-10 pb-15" style={{ paddingTop: "33px" }}>
-            {/* ONLY the "BUY FEATURE" above others (you can nudge left/right by editing left calc) */}
+            {/* ONLY the "BUY FEATURE" above others */}
             <div
               className="absolute -translate-x-1/2 z-[70]"
               style={{
@@ -177,8 +193,9 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
                   <img src={MinusImg} alt="-" className="w-full h-full object-contain select-none" />
                 </button>
 
+                {/* Value field — text changed to white */}
                 <div
-                  className="flex items-center justify-center text-emerald-300 font-extrabold text-[22px]"
+                  className="flex items-center justify-center text-white font-extrabold text-[22px]"
                   style={{
                     width: 220,
                     height: 58,
@@ -206,8 +223,9 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
               <div className="mt-4 text-[18px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.5)]">
                 BUY PRICE
               </div>
+              {/* Balance/price field — text changed to white */}
               <div
-                className="mt-2 mx-auto flex items-center justify-center text-emerald-300 font-extrabold text-[22px]"
+                className="mt-2 mx-auto flex items-center justify-center text-white font-extrabold text-[22px]"
                 style={{
                     width: 220,
                     height: 58,
@@ -222,20 +240,34 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
 
               {/* Buttons row */}
               <div className="mt-8 flex items-center justify-center" style={{ gap: BTN_GAP }}>
+                {/* Cancel */}
                 <button
                   onClick={onCancel}
-                  className="active:translate-y-[1px]"
+                  className="relative active:translate-y-[1px]"
                   style={{ width: BTN_W, position: "relative", left: 9 }}
                 >
-                  <img src={CancelImg} alt="Cancel" className="w-full h-auto select-none" />
+                  <span className={animateAction ? "inline-block animate-pulseOnce" : "inline-block"}>
+                    <img
+                      src={CancelImg}
+                      alt="Cancel"
+                      className="w-full h-auto select-none"
+                    />
+                  </span>
                 </button>
 
+                {/* Buy */}
                 <button
                   onClick={onConfirm}
-                  className="active:translate-y-[1px]"
+                  className="relative active:translate-y-[1px]"
                   style={{ width: BTN_W, position: "relative", left: 5 }}
                 >
-                  <img src={BuyImg} alt="Buy" className="w-full h-auto select-none" />
+                  <span className={animateAction ? "inline-block animate-pulseOnce" : "inline-block"}>
+                    <img
+                      src={BuyImg}
+                      alt="Buy"
+                      className="w-full h-auto select-none"
+                    />
+                  </span>
                 </button>
               </div>
             </div>
@@ -253,6 +285,15 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
         @keyframes flameUp {
           0%, 100% { transform: translateX(-50%) translateY(0) scale(1); filter: brightness(1); opacity: .95; }
           50%      { transform: translateX(-50%) translateY(-3px) scale(1.08); filter: brightness(1.08); opacity: 1; }
+        }
+        /* One-shot pulse (subtle, short) */
+        @keyframes pulseOnceKF {
+          0%   { transform: scale(1); }
+          45%  { transform: scale(1.06); }
+          100% { transform: scale(1); }
+        }
+        .animate-pulseOnce {
+          animation: pulseOnceKF 1.2s ease-in-out;
         }
       `}</style>
     </div>

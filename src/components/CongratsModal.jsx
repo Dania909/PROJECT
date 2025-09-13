@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 // Assets
 import CongratsBg from "../assets/CongratulationBackground.png";
@@ -39,23 +39,43 @@ export default function CongratsModal({ open, spins = 10, onStart }) {
   const FLAME_BOTTOM = TORCH_W * 1.95;
 
   // ===== ABSOLUTE POSITIONS =====
-  const TITLE_Y  = 20;   // "CONGRATULATIONS!"
-  const WON_Y    = 95;   // "YOU HAVE WON"
-  const VINE_Y   = 147;  // vine bar
-  const EFFECT_Y = -9;  // effect image (shifted to proper place)
-  const BELOW_Y  = 254;  // design below
-  const FREE_Y   = 290;  // "FREE SPINS"
-  const START_Y  = 350;  // Start button
+  const TITLE_Y  = 25;
+  const WON_Y    = 95;
+  const VINE_Y   = 147;
+  const EFFECT_Y = -9;
+  const BELOW_Y  = 254;
+  const FREE_Y   = 290;
+  const START_Y  = 350;
 
   // Sizes
-  const TITLE_SIZE = 32;
+  const TITLE_SIZE = 31;
   const WON_SIZE   = 31;
   const FREE_SIZE  = 28;
   const VINE_W     = 400;
   const BELOW_W    = 400;
   const EFFECT_W   = 500;
   const CTA_W      = 200;
-  const NUMBER_SIZE = 100; // size for "10"
+  const NUMBER_SIZE = 100;
+
+  // ===== Start button: one-shot pulse every 3s (reliable restart) =====
+  const [animateStart, setAnimateStart] = useState(false);
+  const [useAltAnim, setUseAltAnim] = useState(false); // toggle between A/B keyframes
+
+  useEffect(() => {
+    if (!open) return;
+    const DURATION_MS = 3000;   // pulse lasts 3s
+    const INTERVAL_MS = 3000;   // trigger every 3s (change to 4000 if you want more idle)
+    const tick = () => {
+      // flip animation name so the browser always restarts it
+      setUseAltAnim((v) => !v);
+      setAnimateStart(true);
+      setTimeout(() => setAnimateStart(false), DURATION_MS - 10); // remove just before next trigger
+    };
+    const kickoff = setTimeout(tick, 800);
+    const interval = setInterval(tick, INTERVAL_MS);
+    return () => { clearTimeout(kickoff); clearInterval(interval); };
+  }, [open]);
+  // ===================================================================
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
@@ -154,7 +174,7 @@ export default function CongratsModal({ open, spins = 10, onStart }) {
             style={{ top: VINE_Y, width: VINE_W }}
           />
 
-          {/* Effect image with NUMBER inside */}
+          {/* Effect + number */}
           <div
             className="absolute left-1/2 -translate-x-1/2"
             style={{ top: EFFECT_Y, width: EFFECT_W }}
@@ -194,14 +214,26 @@ export default function CongratsModal({ open, spins = 10, onStart }) {
             style={{ top: START_Y, width: CTA_W }}
           >
             {!startImgFailed ? (
-              <img
-                src={StartImg}
-                alt="Start"
-                className="w-full h-auto select-none block"
-                onError={() => setStartImgFailed(true)}
-                onClick={onStart}
-                style={{ cursor: "pointer" }}
-              />
+              <span
+                className="inline-block"
+                style={
+                  animateStart
+                    ? {
+                        // Toggle animation name A/B to force restart every time
+                        animation: `${useAltAnim ? "pulseOnceA" : "pulseOnceB"} 3s ease-in-out`,
+                      }
+                    : undefined
+                }
+              >
+                <img
+                  src={StartImg}
+                  alt="Start"
+                  className="w-full h-auto select-none block"
+                  onError={() => setStartImgFailed(true)}
+                  onClick={onStart}
+                  style={{ cursor: "pointer" }}
+                />
+              </span>
             ) : (
               <button
                 onClick={onStart}
@@ -225,6 +257,18 @@ export default function CongratsModal({ open, spins = 10, onStart }) {
         @keyframes flameUp {
           0%, 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: .95; filter: brightness(1); }
           50%      { transform: translateX(-50%) translateY(-3px) scale(1.08); opacity: 1; filter: brightness(1.08); }
+        }
+
+        /* Two identical one-shot pulses — we alternate names to reliably restart */
+        @keyframes pulseOnceA {
+          0%   { transform: scale(1); }
+          50%  { transform: scale(1.06); }
+          100% { transform: scale(1); }
+        }
+        @keyframes pulseOnceB {
+          0%   { transform: scale(1); }
+          50%  { transform: scale(1.06); }
+          100% { transform: scale(1); }
         }
       `}</style>
     </div>

@@ -1,22 +1,51 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
+
+// ===== ASSETS (adjust paths if needed) =====
+import BG from "../assets/GambleBackground.png";
+import Title from "../assets/GambleTitle.png";
+import BtnCollect from "../assets/CollectButton.png";
+import BtnGamble from "../assets/GambleButton.png";   // or ../assets/GambleGreen.png
+import CoinWin from "../assets/GambleWin.png";
+import CoinLose from "../assets/GaambleLoss.png";   
+import StepGreen from "../assets/GambleGreen.png";
+// note the double “a”
 
 /* Ladder: start 10 → try for 15/20/30/50.
-   Lose fallbacks: 5 / 10 / 10 / 15 (ends on lose). */
+   Lose fallbacks: 5 / 10 / 10 / 10 (ends on lose). */
 const LADDER = [
   { win: 15, lose: 5 },
   { win: 20, lose: 10 },
   { win: 30, lose: 10 },
-  { win: 50, lose: 15 },
+  { win: 50, lose: 10 },
 ];
 
 export default function GambleModal({ open, initialSpins = 10, onCollect }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentSpins, setCurrentSpins] = useState(initialSpins);
   const [ended, setEnded] = useState(false);
+
+  // flip state
   const [isFlipping, setIsFlipping] = useState(false);
   const [lastOutcome, setLastOutcome] = useState(null); // 'win' | 'lose' | null
+  const [flipFace, setFlipFace] = useState("win");      // what to show while flipping
+  const flipTimer = useRef(null);
+  const settleTimer = useRef(null);
 
-  // Reset internal state each time the modal is opened or initial spins change
+  // ========= same pulse timing as your Buy/Cancel =========
+  const [animateAction, setAnimateAction] = useState(false);
+  useEffect(() => {
+    const PULSE_MS = 1200;
+    const INTERVAL_MS = 3500;
+    const tick = () => {
+      setAnimateAction(true);
+      setTimeout(() => setAnimateAction(false), PULSE_MS);
+    };
+    const kickoff = setTimeout(tick, 800);
+    const interval = setInterval(tick, INTERVAL_MS);
+    return () => { clearTimeout(kickoff); clearInterval(interval); };
+  }, []);
+  // ========================================================
+
   useEffect(() => {
     if (open) {
       setCurrentIndex(0);
@@ -24,10 +53,17 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
       setEnded(false);
       setIsFlipping(false);
       setLastOutcome(null);
+      setFlipFace("win");
     }
+    return () => {
+      if (flipTimer.current) clearInterval(flipTimer.current);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    };
   }, [open, initialSpins]);
 
-  const canGamble = open && !ended && currentIndex < LADDER.length;
+  // keep enabled until we explicitly end
+  const canGamble = open && !ended;
+
   const step = LADDER[currentIndex];
   const topBanner = useMemo(() => ["15", "20", "30", "50"], []);
 
@@ -35,101 +71,218 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
 
   function doGamble() {
     if (!canGamble || isFlipping) return;
-    setIsFlipping(true);
 
-    setTimeout(() => {
-      const win = Math.random() < 0.5; // 50/50
-      setIsFlipping(false);
+    setIsFlipping(true);
+    setLastOutcome(null);
+
+    // alternate faces quickly while flipping
+    flipTimer.current = setInterval(() => {
+      setFlipFace((f) => (f === "win" ? "lose" : "win"));
+    }, 110);
+
+    // settle on a result
+    settleTimer.current = setTimeout(() => {
+      clearInterval(flipTimer.current);
+      const win = Math.random() < 0.5; // keep 50/50 concept
       setLastOutcome(win ? "win" : "lose");
+      setIsFlipping(false);
 
       if (win) {
-        setCurrentSpins(step.win);
-        if (currentIndex < LADDER.length - 1) setCurrentIndex(currentIndex + 1);
-        else setEnded(true); // reached top
+        // if this win would move us INTO the last step (50), end immediately with 50 spins
+        const nextIndex = Math.min(currentIndex + 1, LADDER.length - 1);
+        if (nextIndex === LADDER.length - 1) {
+          setCurrentIndex(nextIndex);
+          setCurrentSpins(LADDER[LADDER.length - 1].win); // 50
+          setEnded(true); // ✅ no extra gamble after reaching 50
+        } else {
+          setCurrentSpins(step.win);
+          setCurrentIndex(nextIndex);
+        }
       } else {
         setCurrentSpins(step.lose);
         setEnded(true);
       }
-    }, 820);
+    }, 1400);
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-      <div className="w-[min(96vw,900px)] rounded-2xl border-4 border-amber-700
-                      bg-gradient-to-b from-[#2f251e] to-[#1e1712] p-4 shadow-2xl">
-        {/* Header */}
-        <div className="text-center text-2xl font-extrabold text-yellow-300">GAMBLE TO GET:</div>
-        <div className="mt-2 flex items-center justify-center gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      {/* CONTAINER: bigger, and background image NOT cropped */}
+      <div className="relative w-[min(95vw,880px)] aspect-[880/560] rounded-2xl overflow-hidden shadow-2xl bg-transparent">
+        {/* Background as image so it's never cut */}
+        <img
+          src={BG}
+          alt=""
+          className="absolute inset-0 h-full w-full object-contain pointer-events-none select-none"
+        />
+
+        {/* Title smaller */}
+        <img
+          src={Title}
+          alt="GAMBLE TO GET"
+          className="absolute left-1/2 -translate-x-1/2 top-9 w-[35%] pointer-events-none select-none drop-shadow"
+        />
+
+        {/* Ladder boxes: always same size (use the green image for both) */}
+        <div className="absolute top-27 left-1/2 -translate-x-1/2 flex items-center gap-2">
           {topBanner.map((v, i) => (
-            <div key={v}
-              className={`px-3 py-1 rounded-lg border-2
-              ${i < currentIndex ? "bg-emerald-500/80 border-emerald-600 text-black" :
-                i === currentIndex ? "bg-yellow-400/80 border-yellow-500 text-black" :
-                "bg-slate-700/60 border-slate-600 text-slate-200"}`}
-            >
-              {v}
+            <div key={v} className="relative w-10 h-10">
+              {/* background: green if active/complete, else same image darkened */}
+              <img
+                src={StepGreen}
+                alt=""
+                className={`absolute inset-0 h-full w-full object-contain pointer-events-none select-none ${
+                  i <= currentIndex ? "" : "brightness-0" // inactive → blacked out
+                }`}
+              />
+
+              {/* big gold number */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-yellow-300 font-extrabold text-base drop-shadow">
+                  {v}
+                </span>
+              </div>
+
+              {/* small white number (nudged slightly right) */}
+              <div className="absolute bottom-1 text-[8px] font-bold text-white translate-x-1">
+                {LADDER[i].lose}
+              </div>
             </div>
           ))}
         </div>
 
-        {/* Coins */}
-        <div className="mt-5 grid grid-cols-3 items-center">
-          {/* Lose coin */}
+        {/* ===== UPDATED: coin sizes, positions, and labels ===== */}
+        <div className="absolute inset-x-0 top-[28%] flex items-center justify-center gap-34">
+          {/* LOSE coin + label */}
           <div className="flex flex-col items-center">
-            <Coin label={step?.lose?.toString()} color="silver" />
-            <div className="mt-2 text-sm font-bold text-slate-300">FREE SPINS</div>
-          </div>
-
-          {/* Flipping coin */}
-          <div className="flex flex-col items-center">
-            <div className={`w-40 h-40 rounded-full border-[6px] transform-gpu
-                             ${isFlipping ? "animate-[coin-flip_0.8s_ease-in-out_1]" : ""}
-                             bg-gradient-to-b from-yellow-300 to-yellow-600 border-yellow-700 flex items-center justify-center`}>
-              <div className="text-4xl font-extrabold text-yellow-900 drop-shadow">
-                {isFlipping ? "" : (lastOutcome === "win" ? "WIN" : lastOutcome === "lose" ? "LOSE" : "?" )}
-              </div>
+            <StaticCoin img={CoinLose} label={`${step?.lose ?? ""}`} size="sm" />
+            <div className="mt-1 font-extrabold text-yellow-300 leading-tight w-full">
+              <div className="text-lg text-center -translate-x-2">{step?.lose}</div>
+              <div className="text-sm text-left -mt-1">FREE SPINS</div>
             </div>
           </div>
 
-          {/* Win coin */}
+          {/* WIN coin + label */}
           <div className="flex flex-col items-center">
-            <Coin label={(canGamble ? step.win : currentSpins).toString()} color="gold" />
-            <div className="mt-2 text-sm font-bold text-slate-300">FREE SPINS</div>
+            <StaticCoin img={CoinWin} label={`${canGamble ? step.win : currentSpins}`} size="sm" />
+            <div className="mt-1 font-extrabold text-yellow-300 leading-tight w-full">
+              <div className="text-lg text-center translate-x-2">{canGamble ? step.win : currentSpins}</div>
+              <div className="text-sm text-right -mt-1">FREE SPINS</div>
+            </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex items-center justify-center gap-4">
+        {/* FLIPPING coin a bit SMALLER and LOWER */}
+        <div className="absolute left-1/2 -translate-x-1/2 top-[49%]">
+          <FlippingCoin
+            isFlipping={isFlipping}
+            faceWhenFlipping={flipFace}
+            finalOutcome={lastOutcome}
+            winImg={CoinWin}
+            loseImg={CoinLose}
+            size="md"
+          />
+        </div>
+
+        {/* Buttons (images only) — same size & higher */}
+        <div className="absolute inset-x-0 bottom-16 flex items-center justify-center gap-6">
+          {/* COLLECT */}
           <button
             onClick={() => onCollect?.(currentSpins)}
-            className="h-12 px-6 rounded-xl bg-red-500 hover:bg-red-400 text-black font-extrabold text-lg
-                       border-4 border-amber-700 shadow-[0_4px_0_#7a5b24]"
+            className={`relative h-20 w-64 active:scale-95 transition ${animateAction ? "animate-pulseOnce" : ""}`}
+            aria-label={`Collect ${currentSpins} Free Spins`}
           >
-            COLLECT {currentSpins} FREE SPINS
+            <img
+              src={BtnCollect}
+              alt=""
+              className="absolute inset-0 h-full w-full object-contain object-center pointer-events-none select-none"
+            />
           </button>
 
+          {/* GAMBLE */}
           <button
             disabled={!canGamble}
             onClick={doGamble}
-            className={`h-12 px-6 rounded-xl font-extrabold text-lg border-4 border-amber-700 shadow-[0_4px_0_#7a5b24]
-              ${canGamble ? "bg-emerald-400 hover:bg-emerald-300 text-black" : "bg-slate-700 text-slate-400 cursor-not-allowed"}`}
+            className={`relative h-19 w-64 active:scale-95 transition ${canGamble ? "" : "opacity-60 cursor-not-allowed"} ${animateAction ? "animate-pulseOnce" : ""}`}
+            aria-label="Gamble"
           >
-            GAMBLE
+            <img
+              src={BtnGamble}
+              alt=""
+              className="absolute inset-0 h-full w-full object-contain object-center pointer-events-none select-none transform-gpu scale-90"
+            />
           </button>
         </div>
       </div>
+
+      {/* subtle 3D spin + pulseOnce */}
+      <style>{`
+        @keyframes coin-tilt {
+          0%   { transform: rotateY(0deg)   scale(1); }
+          50%  { transform: rotateY(180deg) scale(0.96); }
+          100% { transform: rotateY(360deg) scale(1); }
+        }
+        /* One-shot pulse (same timing/shape as your Buy/Cancel) */
+        @keyframes pulseOnceKF {
+          0%   { transform: scale(1); }
+          45%  { transform: scale(1.06); }
+          100% { transform: scale(1); }
+        }
+        .animate-pulseOnce {
+          animation: pulseOnceKF 1.2s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }
 
-function Coin({ label = "", color = "gold" }) {
-  const base =
-    color === "gold"
-      ? "bg-gradient-to-b from-yellow-200 to-yellow-600 border-yellow-700"
-      : "bg-gradient-to-b from-slate-200 to-slate-400 border-slate-500";
+/* ---------- Presentational pieces ---------- */
+function StaticCoin({ img, label, size = "sm" }) {
+  const cls = size === "sm" ? "w-24 h-24 text-2xl" : "w-36 h-36 text-3xl";
   return (
-    <div className={`w-28 h-28 rounded-full border-[6px] shadow-inner flex items-center justify-center ${base}`}>
-      <div className="text-3xl font-extrabold text-black/70 drop-shadow">{label}</div>
+    <div className={`relative ${cls} select-none`}>
+      <img
+        src={img}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain drop-shadow-xl pointer-events-none"
+      />
+     
+    </div>
+  );
+}
+
+function FlippingCoin({
+  isFlipping,
+  faceWhenFlipping,
+  finalOutcome,
+  winImg,
+  loseImg,
+  size = "md",
+}) {
+  // which face to show now
+  const src = isFlipping
+    ? faceWhenFlipping === "win"
+      ? winImg
+      : loseImg
+    : finalOutcome === "win"
+    ? winImg
+    : finalOutcome === "lose"
+    ? loseImg
+    : winImg;
+
+  const cls = size === "md" ? "w-36 h-36" : "w-44 h-44";
+
+  return (
+    <div
+      className={`relative ${cls} [transform-style:preserve-3d] select-none ${
+        isFlipping ? "[animation:coin-tilt_0.35s_ease-in-out_infinite]" : ""
+      }`}
+    >
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 w-full h-full object-contain drop-shadow-2xl pointer-events-none backface-hidden"
+      />
     </div>
   );
 }
