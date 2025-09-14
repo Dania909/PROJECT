@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import PanelImg from "../assets/Background.png";        // purple panel
 import BorderImg from "../assets/Border.png";           // gold glowing border
@@ -17,10 +17,11 @@ const priceOf = (bet) => +(bet * BUY_MULT).toFixed(2);
 export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm }) {
   if (!open) return null;
 
-  // ---- Layout (your current baseline) ----
-  const WIDTH = 740;
-  const HEIGHT = Math.round(WIDTH * 0.72);
+  // ===== Base "design canvas" size (your tablet layout) =====
+  const BASE_W = 740;
+  const BASE_H = Math.round(BASE_W * 0.72); // ~532
 
+  // ---- Layout (unchanged from your baseline) ----
   const BORDER_SCALE = 1.0;
   const BORDER_Z = -1000;
   const PANEL_Z = 0;
@@ -44,8 +45,9 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
   const BTN_GAP = 55;
 
   // Title placement (moved a little down)
-  const TITLE_TOP_PX = 18; // ⬅️ was 12
+  const TITLE_TOP_PX = 18; // was 12
 
+  // ========= Bet controls =========
   const idx = Math.max(0, BET_OPTIONS.indexOf(bet));
   const canDec = idx > 0;
   const canInc = idx < BET_OPTIONS.length - 1;
@@ -61,141 +63,210 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
       setAnimateAction(true);
       setTimeout(() => setAnimateAction(false), PULSE_MS);
     };
-    // fire once after a short delay so first pulse isn't immediate
     const kickoff = setTimeout(tick, 800);
     const interval = setInterval(tick, INTERVAL_MS);
     return () => { clearTimeout(kickoff); clearInterval(interval); };
   }, []);
-  // ====================================================================
+
+  // ========= Responsive scaler (phones!) =========
+  const shellRef = useRef(null);     // the box that gets a real width (using vw)
+  const stageRef = useRef(null);     // the inner fixed-size stage we scale
+  const [scale, setScale] = useState(1);
+
+  const updateScale = () => {
+    if (!shellRef.current) return;
+    // shell width is clamped to <= BASE_W; scale stage to fill it
+    const shellW = shellRef.current.clientWidth || BASE_W;
+    const s = Math.max(0.5, Math.min(1, shellW / BASE_W)); // keep readable, min 50%
+    setScale(s);
+  };
+
+  useEffect(() => {
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, []);
+
+  // Shell height must follow scaled stage height, so the modal centers correctly
+  const shellHeight = Math.round(BASE_H * scale);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div className="relative" style={{ width: WIDTH, height: HEIGHT }}>
-        {/* BORDER (behind, with glow pulse) */}
-        <img
-          src={BorderImg}
-          alt="border"
-          className="absolute select-none pointer-events-none animate-[borderPulse_1.8s_ease-in-out_infinite]"
-          style={{
-            zIndex: BORDER_Z,
-            width: WIDTH * BORDER_SCALE,
-            height: HEIGHT * BORDER_SCALE,
-            left: "51%",
-            top: "45%",
-            transform: "translate(-50%, -50%)",
-            objectFit: "contain",
-            opacity: 0.96,
-          }}
-        />
-
-        {/* PANEL (base) */}
-        <img
-          src={PanelImg}
-          alt="panel"
-          className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
-          style={{ zIndex: PANEL_Z }}
-        />
-
-        {/* TORCHES */}
-        {/* LEFT torch — moved more to the right */}
+      {/* Shell: width responsive to viewport; height follows scaled stage */}
+      <div
+        ref={shellRef}
+        className="relative"
+        style={{
+          width: "min(92vw, 740px)",   // fits phones; caps at your base width
+          height: shellHeight,         // match scaled inner stage height
+        }}
+      >
+        {/* Scaled stage: keep your original absolute layout inside */}
         <div
-          className="absolute"
+          ref={stageRef}
+          className="relative"
           style={{
-            zIndex: TORCH_Z,
-            left: LEFT_TORCH_LEFT,
-            bottom: TORCH_Y,
-            width: TORCH_W,
+            width: BASE_W,
+            height: BASE_H,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
           }}
         >
-          <img src={TorchImg} alt="torch left" className="w-full select-none pointer-events-none" />
+          {/* BORDER (behind, with glow pulse) */}
           <img
-            src={FlameImg}
-            alt="flame left"
-            className="absolute left-1/2 select-none pointer-events-none"
+            src={BorderImg}
+            alt="border"
+            className="absolute select-none pointer-events-none animate-[borderPulse_1.8s_ease-in-out_infinite]"
             style={{
-              zIndex: FLAME_Z,
-              width: FLAME_W,                     // bigger
-              transform: "translateX(-50%)",
-              bottom: FLAME_BOTTOM,               // lifted to match size
-              animation: "flameUp 0.7s ease-in-out infinite",
+              zIndex: BORDER_Z,
+              width: BASE_W * BORDER_SCALE,
+              height: BASE_H * BORDER_SCALE,
+              left: "51%",
+              top: "45%",
+              transform: "translate(-50%, -50%)",
+              objectFit: "contain",
+              opacity: 0.96,
             }}
           />
-        </div>
 
-        {/* RIGHT torch — unchanged position */}
-        <div
-          className="absolute"
-          style={{
-            zIndex: TORCH_Z,
-            right: RIGHT_TORCH_RIGHT,
-            bottom: TORCH_Y,
-            width: TORCH_W,
-          }}
-        >
+          {/* PANEL (base) */}
           <img
-            src={TorchImg}
-            alt="torch right"
-            className="w-full select-none pointer-events-none"
-            style={{ transform: "scaleX(-1)" }}
+            src={PanelImg}
+            alt="panel"
+            className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+            style={{ zIndex: PANEL_Z }}
           />
-          <img
-            src={FlameImg}
-            alt="flame right"
-            className="absolute left-1/2 select-none pointer-events-none"
+
+          {/* TORCHES */}
+          {/* LEFT torch — moved more to the right */}
+          <div
+            className="absolute"
             style={{
-              zIndex: FLAME_Z,
-              width: FLAME_W,                     // bigger
-              transform: "translateX(-50%)",
-              bottom: FLAME_BOTTOM,               // lifted to match size
-              animation: "flameUp 0.7s ease-in-out infinite",
+              zIndex: TORCH_Z,
+              left: LEFT_TORCH_LEFT,
+              bottom: TORCH_Y,
+              width: TORCH_W,
             }}
-          />
-        </div>
-
-        {/* CONTENT */}
-        <div className="absolute inset-0 grid place-items-center" style={{ zIndex: CONTENT_Z }}>
-          {/* Wrapper relative so title can float */}
-          <div className="relative w-full text-center px-10 pb-15" style={{ paddingTop: "33px" }}>
-            {/* ONLY the "BUY FEATURE" above others */}
-            <div
-              className="absolute -translate-x-1/2 z-[70]"
+          >
+            <img src={TorchImg} alt="torch left" className="w-full select-none pointer-events-none" />
+            <img
+              src={FlameImg}
+              alt="flame left"
+              className="absolute left-1/2 select-none pointer-events-none"
               style={{
-                top: TITLE_TOP_PX,
-                left: "calc(50% + 8px)",
+                zIndex: FLAME_Z,
+                width: FLAME_W,                     // bigger
+                transform: "translateX(-50%)",
+                bottom: FLAME_BOTTOM,               // lifted to match size
+                animation: "flameUp 0.7s ease-in-out infinite",
               }}
-            >
-              <div className="text-[36px] font-extrabold tracking-wider text-yellow-400 drop-shadow-[0_3px_0_rgba(0,0,0,.65)]">
-                BUY FEATURE
-              </div>
-            </div>
+            />
+          </div>
 
-            {/* Everything else */}
-            <div className="pt-8 relative -right-3">
-              <div className="text-[22px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.6)]">
-                <div className="pt-10 relative ">
-                  TRIGGER 10 FREE SPINS
+          {/* RIGHT torch — unchanged position */}
+          <div
+            className="absolute"
+            style={{
+              zIndex: TORCH_Z,
+              right: RIGHT_TORCH_RIGHT,
+              bottom: TORCH_Y,
+              width: TORCH_W,
+            }}
+          >
+            <img
+              src={TorchImg}
+              alt="torch right"
+              className="w-full select-none pointer-events-none"
+              style={{ transform: "scaleX(-1)" }}
+            />
+            <img
+              src={FlameImg}
+              alt="flame right"
+              className="absolute left-1/2 select-none pointer-events-none"
+              style={{
+                zIndex: FLAME_Z,
+                width: FLAME_W,                     // bigger
+                transform: "translateX(-50%)",
+                bottom: FLAME_BOTTOM,               // lifted to match size
+                animation: "flameUp 0.7s ease-in-out infinite",
+              }}
+            />
+          </div>
+
+          {/* CONTENT */}
+          <div className="absolute inset-0 grid place-items-center" style={{ zIndex: CONTENT_Z }}>
+            {/* Wrapper relative so title can float */}
+            <div className="relative w-full text-center px-10 pb-15" style={{ paddingTop: "33px" }}>
+              {/* ONLY the "BUY FEATURE" above others */}
+              <div
+                className="absolute -translate-x-1/2 z-[70]"
+                style={{
+                  top: TITLE_TOP_PX,
+                  left: "calc(50% + 8px)",
+                }}
+              >
+                <div className="text-[36px] font-extrabold tracking-wider text-yellow-400 drop-shadow-[0_3px_0_rgba(0,0,0,.65)]">
+                  BUY FEATURE
                 </div>
               </div>
 
-              {/* Bet chooser */}
-              <div className="mt-5 text-[18px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.5)]">
-                CHOOSE YOUR BET
-              </div>
+              {/* Everything else */}
+              <div className="pt-8 relative -right-3">
+                <div className="text-[22px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.6)]">
+                  <div className="pt-10 relative ">
+                    TRIGGER 10 FREE SPINS
+                  </div>
+                </div>
 
-              <div className="mt-3 flex items-center justify-center gap-2">
-                <button
-                  onClick={dec}
-                  disabled={!canDec}
-                  className="disabled:opacity-40 active:translate-y-[1px]"
-                  style={{ width: 52, height: 50 }}
-                  aria-label="Decrease bet"
-                >
-                  <img src={MinusImg} alt="-" className="w-full h-full object-contain select-none" />
-                </button>
+                {/* Bet chooser */}
+                <div className="mt-5 text-[18px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.5)]">
+                  CHOOSE YOUR BET
+                </div>
 
-                {/* Value field — text changed to white */}
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <button
+                    onClick={dec}
+                    disabled={!canDec}
+                    className="disabled:opacity-40 active:translate-y-[1px]"
+                    style={{ width: 52, height: 50 }}
+                    aria-label="Decrease bet"
+                  >
+                    <img src={MinusImg} alt="-" className="w-full h-full object-contain select-none" />
+                  </button>
+
+                  {/* Value field — text changed to white */}
+                  <div
+                    className="flex items-center justify-center text-white font-extrabold text-[22px]"
+                    style={{
+                      width: 220,
+                      height: 58,
+                      backgroundImage: `url(${FieldImg})`,
+                      backgroundSize: "100% 100%",
+                      backgroundRepeat: "no-repeat",
+                      textShadow: "0 2px 0 rgba(0,0,0,.6)",
+                    }}
+                  >
+                    {bet.toFixed(2)}
+                  </div>
+
+                  <button
+                    onClick={inc}
+                    disabled={!canInc}
+                    className="disabled:opacity-40 active:translate-y-[1px]"
+                    style={{ width: 52, height: 50 }}
+                    aria-label="Increase bet"
+                  >
+                    <img src={PlusImg} alt="+" className="w-full h-full object-contain select-none" />
+                  </button>
+                </div>
+
+                {/* Price */}
+                <div className="mt-4 text-[18px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.5)]">
+                  BUY PRICE
+                </div>
+                {/* Balance/price field — text changed to white */}
                 <div
-                  className="flex items-center justify-center text-white font-extrabold text-[22px]"
+                  className="mt-2 mx-auto flex items-center justify-center text-white font-extrabold text-[22px]"
                   style={{
                     width: 220,
                     height: 58,
@@ -205,74 +276,46 @@ export default function BuyFeatureModal({ open, bet, setBet, onCancel, onConfirm
                     textShadow: "0 2px 0 rgba(0,0,0,.6)",
                   }}
                 >
-                  {bet.toFixed(2)}
+                  {priceOf(bet).toFixed(2)}
                 </div>
 
-                <button
-                  onClick={inc}
-                  disabled={!canInc}
-                  className="disabled:opacity-40 active:translate-y-[1px]"
-                  style={{ width: 52, height: 50 }}
-                  aria-label="Increase bet"
-                >
-                  <img src={PlusImg} alt="+" className="w-full h-full object-contain select-none" />
-                </button>
-              </div>
+                {/* Buttons row */}
+                <div className="mt-8 flex items-center justify-center" style={{ gap: BTN_GAP }}>
+                  {/* Cancel */}
+                  <button
+                    onClick={onCancel}
+                    className="relative active:translate-y-[1px]"
+                    style={{ width: BTN_W, position: "relative", left: 9 }}
+                  >
+                    <span className={animateAction ? "inline-block animate-pulseOnce" : "inline-block"}>
+                      <img
+                        src={CancelImg}
+                        alt="Cancel"
+                        className="w-full h-auto select-none"
+                      />
+                    </span>
+                  </button>
 
-              {/* Price */}
-              <div className="mt-4 text-[18px] font-extrabold text-yellow-300 drop-shadow-[0_2px_0_rgba(0,0,0,.5)]">
-                BUY PRICE
-              </div>
-              {/* Balance/price field — text changed to white */}
-              <div
-                className="mt-2 mx-auto flex items-center justify-center text-white font-extrabold text-[22px]"
-                style={{
-                    width: 220,
-                    height: 58,
-                    backgroundImage: `url(${FieldImg})`,
-                    backgroundSize: "100% 100%",
-                    backgroundRepeat: "no-repeat",
-                    textShadow: "0 2px 0 rgba(0,0,0,.6)",
-                }}
-              >
-                {priceOf(bet).toFixed(2)}
-              </div>
-
-              {/* Buttons row */}
-              <div className="mt-8 flex items-center justify-center" style={{ gap: BTN_GAP }}>
-                {/* Cancel */}
-                <button
-                  onClick={onCancel}
-                  className="relative active:translate-y-[1px]"
-                  style={{ width: BTN_W, position: "relative", left: 9 }}
-                >
-                  <span className={animateAction ? "inline-block animate-pulseOnce" : "inline-block"}>
-                    <img
-                      src={CancelImg}
-                      alt="Cancel"
-                      className="w-full h-auto select-none"
-                    />
-                  </span>
-                </button>
-
-                {/* Buy */}
-                <button
-                  onClick={onConfirm}
-                  className="relative active:translate-y-[1px]"
-                  style={{ width: BTN_W, position: "relative", left: 5 }}
-                >
-                  <span className={animateAction ? "inline-block animate-pulseOnce" : "inline-block"}>
-                    <img
-                      src={BuyImg}
-                      alt="Buy"
-                      className="w-full h-auto select-none"
-                    />
-                  </span>
-                </button>
+                  {/* Buy */}
+                  <button
+                    onClick={onConfirm}
+                    className="relative active:translate-y-[1px]"
+                    style={{ width: BTN_W, position: "relative", left: 5 }}
+                  >
+                    <span className={animateAction ? "inline-block animate-pulseOnce" : "inline-block"}>
+                      <img
+                        src={BuyImg}
+                        alt="Buy"
+                        className="w-full h-auto select-none"
+                      />
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+        {/* /Scaled stage */}
       </div>
 
       {/* Animations */}

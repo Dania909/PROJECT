@@ -123,27 +123,22 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
           className="absolute left-1/2 -translate-x-1/2 top-9 w-[35%] pointer-events-none select-none drop-shadow"
         />
 
-        {/* Ladder boxes: always same size (use the green image for both) */}
-        <div className="absolute top-27 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        {/* Ladder boxes */}
+        <div className="absolute top-27 left-1/2 -translate-x-1/2 flex items-center gap-2 ladder-tablet-up">
           {topBanner.map((v, i) => (
             <div key={v} className="relative w-10 h-10">
-              {/* background: green if active/complete, else same image darkened */}
               <img
                 src={StepGreen}
                 alt=""
                 className={`absolute inset-0 h-full w-full object-contain pointer-events-none select-none ${
-                  i <= currentIndex ? "" : "brightness-0" // inactive → blacked out
+                  i <= currentIndex ? "" : "brightness-0"
                 }`}
               />
-
-              {/* big gold number */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-yellow-300 font-extrabold text-base drop-shadow">
                   {v}
                 </span>
               </div>
-
-              {/* small white number (nudged slightly right) */}
               <div className="absolute bottom-1 text-[8px] font-bold text-white translate-x-1">
                 {LADDER[i].lose}
               </div>
@@ -151,9 +146,8 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
           ))}
         </div>
 
-        {/* ===== UPDATED: coin sizes, positions, and labels ===== */}
+        {/* Coins */}
         <div className="absolute inset-x-0 top-[28%] flex items-center justify-center gap-34">
-          {/* LOSE coin + label */}
           <div className="flex flex-col items-center">
             <StaticCoin img={CoinLose} label={`${step?.lose ?? ""}`} size="sm" />
             <div className="mt-1 font-extrabold text-yellow-300 leading-tight w-full">
@@ -161,8 +155,6 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
               <div className="text-sm text-left -mt-1">FREE SPINS</div>
             </div>
           </div>
-
-          {/* WIN coin + label */}
           <div className="flex flex-col items-center">
             <StaticCoin img={CoinWin} label={`${canGamble ? step.win : currentSpins}`} size="sm" />
             <div className="mt-1 font-extrabold text-yellow-300 leading-tight w-full">
@@ -172,7 +164,7 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
           </div>
         </div>
 
-        {/* FLIPPING coin a bit SMALLER and LOWER */}
+        {/* Flipping coin */}
         <div className="absolute left-1/2 -translate-x-1/2 top-[49%]">
           <FlippingCoin
             isFlipping={isFlipping}
@@ -184,9 +176,8 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
           />
         </div>
 
-        {/* Buttons (images only) — same size & higher */}
+        {/* Buttons */}
         <div className="absolute inset-x-0 bottom-16 flex items-center justify-center gap-6">
-          {/* COLLECT */}
           <button
             onClick={() => onCollect?.(currentSpins)}
             className={`relative h-20 w-64 active:scale-95 transition ${animateAction ? "animate-pulseOnce" : ""}`}
@@ -199,7 +190,6 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
             />
           </button>
 
-          {/* GAMBLE */}
           <button
             disabled={!canGamble}
             onClick={doGamble}
@@ -215,14 +205,13 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
         </div>
       </div>
 
-      {/* subtle 3D spin + pulseOnce */}
+      {/* Styles */}
       <style>{`
         @keyframes coin-tilt {
           0%   { transform: rotateY(0deg)   scale(1); }
           50%  { transform: rotateY(180deg) scale(0.96); }
           100% { transform: rotateY(360deg) scale(1); }
         }
-        /* One-shot pulse (same timing/shape as your Buy/Cancel) */
         @keyframes pulseOnceKF {
           0%   { transform: scale(1); }
           45%  { transform: scale(1.06); }
@@ -230,6 +219,13 @@ export default function GambleModal({ open, initialSpins = 10, onCollect }) {
         }
         .animate-pulseOnce {
           animation: pulseOnceKF 1.2s ease-in-out;
+        }
+
+        /* Tablet only: move ladder numbers up */
+        @media (min-width: 640px) and (max-width: 1024px) {
+          .ladder-tablet-up {
+            top: 18% !important;
+          }
         }
       `}</style>
     </div>
@@ -246,7 +242,6 @@ function StaticCoin({ img, label, size = "sm" }) {
         alt=""
         className="absolute inset-0 w-full h-full object-contain drop-shadow-xl pointer-events-none"
       />
-     
     </div>
   );
 }
@@ -259,7 +254,6 @@ function FlippingCoin({
   loseImg,
   size = "md",
 }) {
-  // which face to show now
   const src = isFlipping
     ? faceWhenFlipping === "win"
       ? winImg

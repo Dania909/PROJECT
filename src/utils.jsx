@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import wildImage from "./assets/wild.jpg";
 import freeSpinsImage from "./assets/freespins.jpg";
@@ -28,7 +27,7 @@ export const SYMBOLS = [
 
 export const REELS = 5;
 export const ROWS = 4;
-export const CELL_SIZE = 150;
+export const CELL_SIZE = 100;
 export const LINES = 25;
 export const STEPS = [0.01, 0.02, 0.05, 0.1, 0.3, 0.5, 1, 2, 5, 10];
 
