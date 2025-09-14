@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import background from "../assets/background.jpg";
 import slotcon from "../assets/slotcon.png";
@@ -6,7 +5,7 @@ import bluee from "../assets/bluee.png";
 import minus from "../assets/minuss.png";
 import plus from "../assets/pluss.png";
 
-
+import SparkleBackground from "./SparkleBackground.jsx";
 import spinImg from "../assets/divsp.png";
 import loadingImg from "../assets/stop.png";
 import another from "../assets/spinns.png";
@@ -74,17 +73,32 @@ const CoinSVG = ({ size = 44 }) => (
     </defs>
     <circle cx="50" cy="50" r="48" fill="url(#coinRim)" />
     <circle cx="50" cy="50" r="42" fill="url(#coinCore)" />
-    <circle cx="50" cy="50" r="30" fill="none" stroke="#ffe7a3" strokeWidth="4" opacity="0.9" />
-    <rect x="5" y="20" width="60" height="14" fill="url(#shine)" transform="rotate(-25 35 27)" opacity="0.9" />
+    <circle
+      cx="50"
+      cy="50"
+      r="30"
+      fill="none"
+      stroke="#ffe7a3"
+      strokeWidth="4"
+      opacity="0.9"
+    />
+    <rect
+      x="5"
+      y="20"
+      width="60"
+      height="14"
+      fill="url(#shine)"
+      transform="rotate(-25 35 27)"
+      opacity="0.9"
+    />
   </svg>
 );
 
+const WIN_ANCHOR_LEFT = "47%";
 
-const WIN_ANCHOR_LEFT = "47%";           
-
-const CENTER_BLOCK_LEFT = "26%";          
-const LEFT_BLOCK_LEFT = "3%";            
-const CENTER_BLOCK_BOTTOM = "1.8rem";     
+const CENTER_BLOCK_LEFT = "26%";
+const LEFT_BLOCK_LEFT = "3%";
+const CENTER_BLOCK_BOTTOM = "1.8rem";
 
 // Bigger WIN field
 const WIN_WIDTH = "19.5rem";
@@ -100,7 +114,6 @@ export default function SlotMachine({
 }) {
   const [spinning, setSpinning] = useState(false);
 
- 
   const [internalBalance, setInternalBalance] = useState(5000);
   const balance = externalBalance ?? internalBalance;
   const setBalance = externalSetBalance ?? setInternalBalance;
@@ -130,6 +143,7 @@ export default function SlotMachine({
   const [showBigWin, setShowBigWin] = useState(false);
   const [bigWinKey, setBigWinKey] = useState(0);
   const [bigWinCoins, setBigWinCoins] = useState([]);
+  const [freeSpinAnimKey, setFreeSpinAnimKey] = useState(0);
 
   // Strip data
   const strips = useMemo(
@@ -156,7 +170,10 @@ export default function SlotMachine({
       fallDurS: +(2.6 + Math.random() * 0.8).toFixed(2),
     }));
 
-    const maxEndS = coins.reduce((m, c) => Math.max(m, c.delayS + c.fallDurS), 0);
+    const maxEndS = coins.reduce(
+      (m, c) => Math.max(m, c.delayS + c.fallDurS),
+      0
+    );
     const totalMs = Math.round(maxEndS * 1000);
 
     setWinFxCoins(coins);
@@ -166,24 +183,27 @@ export default function SlotMachine({
     setTimeout(() => setShowWinFX(false), totalMs + 60);
   }, []);
 
-  const triggerBigWin = useCallback((amount) => {
-    const N = 140;
-    const coins = Array.from({ length: N }, () => ({
-      leftVW: Math.random() * 100,
-      delayS: +(Math.random() * 0.7).toFixed(2),
-      driftPX: Math.round((Math.random() - 0.5) * 540),
-      fallVH: 150 + Math.round(Math.random() * 70),
-      size: Math.round(46 + Math.random() * 36),
-      spinDurS: +(0.8 + Math.random() * 0.8).toFixed(2),
-      fallDurS: +(2.8 + Math.random() * 1.0).toFixed(2),
-    }));
+  const triggerBigWin = useCallback(
+    (amount) => {
+      const N = 140;
+      const coins = Array.from({ length: N }, () => ({
+        leftVW: Math.random() * 100,
+        delayS: +(Math.random() * 0.7).toFixed(2),
+        driftPX: Math.round((Math.random() - 0.5) * 540),
+        fallVH: 150 + Math.round(Math.random() * 70),
+        size: Math.round(46 + Math.random() * 36),
+        spinDurS: +(0.8 + Math.random() * 0.8).toFixed(2),
+        fallDurS: +(2.8 + Math.random() * 1.0).toFixed(2),
+      }));
 
-    setBigWinCoins(coins);
-    setBigWinKey((k) => k + 1);
-    setShowBigWin(true);
+      setBigWinCoins(coins);
+      setBigWinKey((k) => k + 1);
+      setShowBigWin(true);
 
-    setTimeout(() => setShowBigWin(false), BIG_WIN_SHOW_MS);
-  }, [BIG_WIN_SHOW_MS]);
+      setTimeout(() => setShowBigWin(false), BIG_WIN_SHOW_MS);
+    },
+    [BIG_WIN_SHOW_MS]
+  );
 
   const startSpin = useCallback(() => {
     if (spinning || (!inFreeSpins && balance < betPerLine * LINES)) return;
@@ -244,8 +264,20 @@ export default function SlotMachine({
         }
       }, 1000 + i * 400);
     }
-  }, [spinning, balance, betPerLine, inFreeSpins, setBalance, triggerBigWin, triggerWinFX]);
-
+  }, [
+    spinning,
+    balance,
+    betPerLine,
+    inFreeSpins,
+    setBalance,
+    triggerBigWin,
+    triggerWinFX,
+  ]);
+  useEffect(() => {
+    if (inFreeSpins) {
+      setFreeSpinAnimKey((prev) => prev + 1);
+    }
+  }, [inFreeSpins]);
   useEffect(() => {
     if (addFreeSpinsSignal && addFreeSpinsAmount > 0) {
       setFreeSpins((prev) => prev + addFreeSpinsAmount);
@@ -329,6 +361,8 @@ export default function SlotMachine({
         backgroundRepeat: "no-repeat",
       }}
     >
+      {/* الخلفية المتلألئة */}
+      <SparkleBackground />
       <div style={{ transformOrigin: "center center" }}>
         <div
           className="relative rounded-xl shadow-xl pt-15"
@@ -375,9 +409,18 @@ export default function SlotMachine({
           {/* Torches */}
           <div
             className="absolute"
-            style={{ zIndex: TORCH_Z, left: LEFT_TORCH_LEFT, bottom: TORCH_Y, width: TORCH_W }}
+            style={{
+              zIndex: TORCH_Z,
+              left: LEFT_TORCH_LEFT,
+              bottom: TORCH_Y,
+              width: TORCH_W,
+            }}
           >
-            <img src={TorchImg} alt="torch left" className="w-full select-none pointer-events-none" />
+            <img
+              src={TorchImg}
+              alt="torch left"
+              className="w-full select-none pointer-events-none"
+            />
             <img
               src={FlameImg}
               alt="flame left"
@@ -394,7 +437,12 @@ export default function SlotMachine({
 
           <div
             className="absolute"
-            style={{ zIndex: TORCH_Z, right: RIGHT_TORCH_RIGHT, bottom: TORCH_Y, width: TORCH_W }}
+            style={{
+              zIndex: TORCH_Z,
+              right: RIGHT_TORCH_RIGHT,
+              bottom: TORCH_Y,
+              width: TORCH_W,
+            }}
           >
             <img
               src={TorchImg}
@@ -438,6 +486,8 @@ export default function SlotMachine({
                 cellSize={CELL_SIZE}
                 strip={strips[reelIndex]}
                 resultColumn={result.map((row) => row[reelIndex])}
+                wildFxKey={freeSpinAnimKey} // المفتاح يتجدد تلقائياً
+                wildWin={inFreeSpins} // animation يتفعل لما Free Spins تكون true
               />
             ))}
           </div>
@@ -456,6 +506,8 @@ export default function SlotMachine({
                 display: "grid",
                 gridTemplateColumns: `repeat(${REELS}, 1fr)`,
                 gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+                animation: "none", // 🚫 إيقاف أي animation
+                opacity: 1,
               }}
             >
               {wildCols.map((isWild, c) =>
@@ -466,24 +518,13 @@ export default function SlotMachine({
                         gridColumn: `${c + 1} / ${c + 2}`,
                         gridRow: `1 / ${ROWS + 1}`,
                         position: "relative",
+                        animation: "none", // 🚫 إيقاف أي animation
+                        opacity: 1,
                       }}
-                    >
-                      <div
-                        style={{
-                          position: "absolute",
-                          inset: "4%",
-                          borderRadius: "14px",
-                          border: "3px solid rgba(255,230,140,.95)",
-                          boxShadow:
-                            "0 0 12px rgba(255,200,100,.85), 0 0 28px rgba(255,150,40,.6), inset 0 0 16px rgba(255,170,50,.5)",
-                          animation: "wild-border-pulse 900ms ease-in-out 2",
-                          mixBlendMode: "screen",
-                        }}
-                      />
-                    </div>
+                    ></div>
 
                     {Array.from({ length: ROWS }).map((_, r) => {
-                      const base = r * 70;
+                      // const base = r * 70;
                       return (
                         <div
                           key={`stickcell-${c}-${r}-${wildBoxKey}`}
@@ -491,42 +532,11 @@ export default function SlotMachine({
                             gridColumn: `${c + 1} / ${c + 2}`,
                             gridRow: `${r + 1} / ${r + 2}`,
                             position: "relative",
+                            animation: "none", // 🚫 إيقاف أي animation
+                            opacity: 1,
                           }}
                         >
-                          <span
-                            style={{
-                              position: "absolute",
-                              left: "-10%",
-                              top: "38%",
-                              width: "120%",
-                              height: "12%",
-                              background:
-                                "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(255,255,255,.95) 45%, #ffd771 52%, rgba(255,255,255,.95) 58%, rgba(0,0,0,0) 100%)",
-                              filter: "blur(1px)",
-                              mixBlendMode: "screen",
-                              opacity: 0,
-                              animation: `stick-in 100ms linear ${base}ms forwards, 
-                                          stick-sweep 1000ms ease-in-out ${base}ms 2 alternate, 
-                                          stick-flicker 320ms ease-in-out ${base + 100}ms 6 alternate`,
-                            }}
-                          />
-                          <span
-                            style={{
-                              position: "absolute",
-                              left: "-12%",
-                              top: "66%",
-                              width: "124%",
-                              height: "12%",
-                              background:
-                                "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(255,255,255,.95) 45%, #ffd771 52%, rgba(255,255,255,.95) 58%, rgba(0,0,0,0) 100%)",
-                              filter: "blur(1px)",
-                              mixBlendMode: "screen",
-                              opacity: 0,
-                              animation: `stick-in 100ms linear ${base + 120}ms forwards, 
-                                          stick-sweep 1040ms ease-in-out ${base + 120}ms 2 alternate, 
-                                          stick-flicker 320ms ease-in-out ${base + 220}ms 6 alternate`,
-                            }}
-                          />
+                          {/* الخطوط اتشالت هون */}
                         </div>
                       );
                     })}
@@ -538,7 +548,10 @@ export default function SlotMachine({
 
           {/* BIG WIN overlay (>=3) */}
           {showBigWin && (
-            <div key={`bigwin-${bigWinKey}`} className="pointer-events-none fixed inset-0 z-[1100]">
+            <div
+              key={`bigwin-${bigWinKey}`}
+              className="pointer-events-none fixed inset-0 z-[1100]"
+            >
               <div
                 style={{
                   position: "absolute",
@@ -759,7 +772,11 @@ export default function SlotMachine({
               ) : (
                 <>
                   <button onClick={decreaseBet}>
-                    <img src={minus} alt="Decrease Bet" className="w-10 h-10 px-0.5 py-1" />
+                    <img
+                      src={minus}
+                      alt="Decrease Bet"
+                      className="w-10 h-10 px-0.5 py-1"
+                    />
                   </button>
 
                   <div className="flex flex-col items-center">
@@ -778,7 +795,11 @@ export default function SlotMachine({
                   </div>
 
                   <button onClick={increaseBet}>
-                    <img src={plus} alt="Increase Bet" className="w-11 h-11 px-1 py-1" />
+                    <img
+                      src={plus}
+                      alt="Increase Bet"
+                      className="w-11 h-11 px-1 py-1"
+                    />
                   </button>
                 </>
               )}
@@ -803,7 +824,7 @@ export default function SlotMachine({
                 title="Buy Feature"
                 style={{
                   border: "none",
-                  boxShadow: "none",     
+                  boxShadow: "none",
                   outline: "none",
                   background: "transparent",
                   padding: 0,
@@ -820,11 +841,17 @@ export default function SlotMachine({
               {/* SPIN (second design) */}
               <button
                 onClick={startSpin}
-                disabled={spinning || (!inFreeSpins && balance < betPerLine * LINES)}
+                disabled={
+                  spinning || (!inFreeSpins && balance < betPerLine * LINES)
+                }
                 className="relative w-14 h-14 disabled:opacity-90"
               >
                 <div className="relative w-full h-full">
-                  <img src={spinImg} alt="Spin" className="w-25 h-15 object-contain" />
+                  <img
+                    src={spinImg}
+                    alt="Spin"
+                    className="w-25 h-15 object-contain"
+                  />
                   {!spinning && (
                     <img
                       src={another}
@@ -837,7 +864,11 @@ export default function SlotMachine({
                 <span className="absolute inset-0 flex items-center justify-center font-bold text-black text-sm">
                   {spinning ? (
                     <div className="relative w-full h-full">
-                      <img src={spinImg} alt="Spin" className="w-25 h-15 object-contain" />
+                      <img
+                        src={spinImg}
+                        alt="Spin"
+                        className="w-25 h-15 object-contain"
+                      />
                       <img
                         src={loadingImg}
                         alt="Overlay"
@@ -849,7 +880,11 @@ export default function SlotMachine({
                   ) : inFreeSpins ? (
                     ""
                   ) : (
-                    <img src={spinImg} alt="Spin" className="w-160 h-160 object-contain" />
+                    <img
+                      src={spinImg}
+                      alt="Spin"
+                      className="w-160 h-160 object-contain"
+                    />
                   )}
                 </span>
               </button>
@@ -858,7 +893,6 @@ export default function SlotMachine({
               <AutoPlayButton startSpin={startSpin} interval={2000} />
             </div>
 
-          
             <div
               className="flex flex-col items-center text-white"
               style={{
@@ -918,29 +952,8 @@ export default function SlotMachine({
               50%  { transform: rotateY(180deg); }
               100% { transform: rotateY(360deg); }
             }
-            @keyframes wild-border-pulse {
-              0% {
-                box-shadow:
-                  0 0 10px rgba(255,200,90,.7),
-                  0 0 22px rgba(255,140,0,.45),
-                  inset 0 0 12px rgba(255,170,50,.45);
-              }
-              50% {
-                box-shadow:
-                  0 0 16px rgba(255,220,120,.95),
-                  0 0 34px rgba(255,160,30,.65),
-                  inset 0 0 20px rgba(255,190,70,.6);
-              }
-              100% {
-                box-shadow:
-                  0 0 10px rgba(255,200,90,.7),
-                  0 0 22px rgba(255,140,0,.45),
-                  inset 0 0 12px rgba(255,170,50,.45);
-              }
-            }
-            @keyframes stick-in      { from { opacity: 0; } to { opacity: .95; } }
-            @keyframes stick-sweep   { 0% { transform: translateX(-6%); } 100% { transform: translateX(6%); } }
-            @keyframes stick-flicker { 0% { filter: blur(1px) brightness(1.0);} 50%{ filter: blur(1.1px) brightness(1.25);} 100%{ filter: blur(1px) brightness(1.0);} }
+           
+
 
             @keyframes bw-title-pop {
               0% { transform: scale(0.65); opacity: 0; }
